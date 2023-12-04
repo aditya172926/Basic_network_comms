@@ -22,22 +22,22 @@ pub enum Message {
     },
     Sync {
         key: String,
-        Value: String,
+        value: String,
     },
 }
 
-struct KeyValueStore {
+pub struct KeyValueStore {
     store: RwLock<HashMap<String, String>>,
 }
 
 impl KeyValueStore {
-    fn new() -> Self {
+    pub fn new() -> Self {
         KeyValueStore {
             store: RwLock::new(HashMap::new()),
         }
     }
 
-    async fn set(&self, key: String, value: String) {
+    pub async fn set(&self, key: String, value: String) {
         let store = self.store.write();
         match store {
             Ok(mut object) => object.insert(key, value),
@@ -49,7 +49,7 @@ impl KeyValueStore {
         // store.insert(key, value);
     }
 
-    async fn get(&self, key: &str) -> Option<String> {
+    pub async fn get(&self, key: &str) -> Option<String> {
         let store = self.store.read();
         let value = match store {
             Ok(object) => object.get(key).cloned()
@@ -63,7 +63,7 @@ impl KeyValueStore {
     }
 }
 
-struct NodeInfo {
-    last_seen: Instant,
-    tcp_address: SocketAddr
+pub struct NodeInfo {
+    pub last_seen: Instant,
+    pub tcp_address: SocketAddr
 }
