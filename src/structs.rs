@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, net::SocketAddr, process::exit, sync::RwLock};
+use std::{collections::HashMap, net::SocketAddr, process::exit, sync::RwLock, time::Instant};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Message {
@@ -61,4 +61,9 @@ impl KeyValueStore {
         };
         value
     }
+}
+
+struct NodeInfo {
+    last_seen: Instant,
+    tcp_address: SocketAddr
 }
