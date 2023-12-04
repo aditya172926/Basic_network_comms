@@ -79,7 +79,7 @@ async fn handle_tcp_stream(mut stream: TcpStream, nodes: Arc<RwLock<HashMap<Stri
         },
         Message::Setvalue { key, value } => {
             println!("Received setvalue");
-            key_value_store.set(key, value).await;
+            key_value_store.set(key.clone(), value.clone()).await;
 
             // sync to all nodes
             let nodes_guard = nodes.read().await;
@@ -88,7 +88,14 @@ async fn handle_tcp_stream(mut stream: TcpStream, nodes: Arc<RwLock<HashMap<Stri
                     Ok(stream) => stream,
                     Err(_) => continue
                 };
+                let sync_msg = Message::Sync { key: key.clone(), value: value.clone() };
+                let serialized_message = serde_json::to_string(&sync_msg).unwrap();
+                let _ = stream.write_all(serialized_message.as_bytes()).await;
             }
-        }
+            let response = Message::ValueResponse { value: Some("Value set successful".to_string()) };
+            let serialized_response = serde_json::to_string(&response).unwrap();
+            stream.write_all(serialized_response.as_bytes()).await.unwrap();
+        },
+
     }
 }
