@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, net::SocketAddr, process::exit, sync::RwLock, time::Instant};
+use tokio::{sync::RwLock, time::Instant};
+use std::{collections::HashMap, net::SocketAddr};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Message {
@@ -38,28 +39,14 @@ impl KeyValueStore {
     }
 
     pub async fn set(&self, key: String, value: String) {
-        let store = self.store.write();
-        match store {
-            Ok(mut object) => object.insert(key, value),
-            Err(error) => {
-                println!("Error in setting the value {:?}", error);
-                exit(1);
-            }
-        };
+        let mut store = self.store.write().await;
+        store.insert(key, value);
         // store.insert(key, value);
     }
 
     pub async fn get(&self, key: &str) -> Option<String> {
-        let store = self.store.read();
-        let value = match store {
-            Ok(object) => object.get(key).cloned()
-            ,
-            Err(error) => {
-                println!("Error in setting the value {:?}", error);
-                exit(1);
-            }
-        };
-        value
+        let store = self.store.read().await;
+        store.get(key).cloned()
     }
 }
 
