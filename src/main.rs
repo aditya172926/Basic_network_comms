@@ -1,7 +1,7 @@
 use std::{net::SocketAddr, collections::HashMap, sync::Arc};
 
 use mac_address::MacAddressError;
-use tokio::{net::{UdpSocket, TcpListener, TcpStream}, sync::RwLock, stream, io::{AsyncReadExt, AsyncWriteExt}};
+use tokio::{net::{UdpSocket, TcpListener, TcpStream}, sync::RwLock, io::{AsyncReadExt, AsyncWriteExt}};
 
 mod structs;
 use crate::structs::{KeyValueStore, Message, NodeInfo};
@@ -50,10 +50,10 @@ async fn main()-> Result<(), Box<dyn std::error::Error>> {
         println!("TCP listener started");
         while let Ok((stream, _)) = listener.accept().await {
             println!("Accepted new TCP connection");
-            tokio::spawn(handle_tcp_stream)
+            tokio::spawn(handle_tcp_stream(stream, nodes_clone.clone(), key_value_store.clone()));
         }
 
-    })
+    });
     Ok(())
 } 
 
@@ -96,6 +96,18 @@ async fn handle_tcp_stream(mut stream: TcpStream, nodes: Arc<RwLock<HashMap<Stri
             let serialized_response = serde_json::to_string(&response).unwrap();
             stream.write_all(serialized_response.as_bytes()).await.unwrap();
         },
+        Message::Getvalue { key } => {
+            println!("Received Getvalue");
+            let value = key_value_store.get(&key).await;
+            let response = Message::ValueResponse { value };
+            let serialize_response = serde_json::to_string(&response).unwrap();
+            stream.write_all(serialize_response.as_bytes()).await.unwrap();
+        },
+        Message::Sync { key, value } => {
+            println!("Receive sync");
+            key_value_store.set(key, value).await;
+        },
+        _ => {}
 
     }
 }
