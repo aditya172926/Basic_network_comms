@@ -10,7 +10,7 @@ const BROADCAST_ADDR: &str = "255.255.255.255:8888";
 const TCP_PORT: u16 = 9000;
 
 fn get_mac_address() -> Result<String, MacAddressError> {
-    let mac = "2".to_string();
+    let mac = "".to_string();
     Ok(mac)
     // let mac = mac_address::get_mac_address()?;
     // match mac {
@@ -38,7 +38,7 @@ async fn main()-> Result<(), Box<dyn std::error::Error>> {
     tokio::spawn(async move {
         match get_mac_address() {
             Ok(node_name) => {
-                let tcp_address: SocketAddr = format!("{}", "192.168.97.97:9000").parse().unwrap();
+                let tcp_address: SocketAddr = format!("{}", "192.168.177.20:9000").parse().unwrap();
                 let msg: Message = Message::Handshake {
                     node_name: node_name.clone(),
                     tcp_address
@@ -59,7 +59,7 @@ async fn main()-> Result<(), Box<dyn std::error::Error>> {
     println!("here");
     let nodes_clone = nodes.clone();
     tokio::spawn(async move {
-        let listener: TcpListener = TcpListener::bind("192.168.97.97:9000").await.unwrap();
+        let listener: TcpListener = TcpListener::bind("0.0.0.0:9000").await.unwrap();
         println!("TCP listener started {:?}", listener);
         while let Ok((stream, _)) = listener.accept().await {
             println!("\nAccepted new TCP connection");
