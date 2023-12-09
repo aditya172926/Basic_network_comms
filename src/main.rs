@@ -1,4 +1,4 @@
-use std::{net::SocketAddr, collections::HashMap, sync::Arc};
+use std::{net::SocketAddr, collections::HashMap, sync::Arc, process::exit};
 
 use mac_address::MacAddressError;
 use tokio::{net::{UdpSocket, TcpListener, TcpStream}, sync::RwLock, io::{AsyncReadExt, AsyncWriteExt}, time::Instant};
@@ -10,13 +10,15 @@ const BROADCAST_ADDR: &str = "255.255.255.255:8888";
 const TCP_PORT: u16 = 9000;
 
 fn get_mac_address() -> Result<String, MacAddressError> {
-    let mac = mac_address::get_mac_address()?;
-    match mac {
-        Some(address) => {
-            println!("\nMac address {:?}", address.to_string());
-            Ok(address.to_string())},
-        None => Err(MacAddressError::InternalError)
-    }
+    let mac = "2".to_string();
+    Ok(mac)
+    // let mac = mac_address::get_mac_address()?;
+    // match mac {
+    //     Some(address) => {
+    //         println!("\nMac address {:?}", address.to_string());
+    //         Ok(address.to_string())},
+    //     None => Err(MacAddressError::InternalError)
+    // }
 }
 
 #[tokio::main]
@@ -36,7 +38,7 @@ async fn main()-> Result<(), Box<dyn std::error::Error>> {
     tokio::spawn(async move {
         match get_mac_address() {
             Ok(node_name) => {
-                let tcp_address: SocketAddr = format!("{}:{}", "0.0.0.0", TCP_PORT).parse().unwrap();
+                let tcp_address: SocketAddr = format!("{}", "192.168.97.97:9000").parse().unwrap();
                 let msg: Message = Message::Handshake {
                     node_name: node_name.clone(),
                     tcp_address
@@ -57,7 +59,7 @@ async fn main()-> Result<(), Box<dyn std::error::Error>> {
     println!("here");
     let nodes_clone = nodes.clone();
     tokio::spawn(async move {
-        let listener: TcpListener = TcpListener::bind(("0.0.0.0", TCP_PORT)).await.unwrap();
+        let listener: TcpListener = TcpListener::bind("192.168.97.97:9000").await.unwrap();
         println!("TCP listener started {:?}", listener);
         while let Ok((stream, _)) = listener.accept().await {
             println!("\nAccepted new TCP connection");
@@ -84,7 +86,7 @@ async fn main()-> Result<(), Box<dyn std::error::Error>> {
             if node_name == local_node_name {
                 continue;
             }
-            println!("\nReceived handshake from node {:?}", node_name);
+            println!("\nReceived handshake from node {:?}, {:?}", node_name, tcp_address);
             {
                 let mut nodes_guard = nodes.write().await;
                 nodes_guard.insert(node_name.clone(), NodeInfo { last_seen: Instant::now(), tcp_address });
@@ -94,12 +96,23 @@ async fn main()-> Result<(), Box<dyn std::error::Error>> {
             let serialized_greeting = serde_json::to_string(&greeting).unwrap();
             socket.send_to(serialized_greeting.as_bytes(), &address).await?;
 
+            // starting heartbeat for this node
             let nodes_clone = nodes.clone();
             tokio::spawn(async move {
                 loop {
                     tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-                    println!("Sending the heartbeat to {}", tcp_address);
-                    let mut stream = TcpStream::connect(tcp_address).await.unwrap();
+                    println!("Sending the heartbeat to {}", tcp_address.to_string());
+                    // failing here
+                    let mut stream = match TcpStream::connect(tcp_address).await {
+                        Ok(stream) => {
+                            println!("\n the stream obj is {:?}", stream);
+                            stream
+                        },
+                        Err(error) => {
+                            println!("Error in sending heartbeat {:?}", error);
+                            exit(1);
+                        }
+                    };
                     let heartbeat_message = Message::Heartbeat;
                     let serialize_message = serde_json::to_string(&heartbeat_message).unwrap();
                     stream.write_all(serialize_message.as_bytes()).await.unwrap();
